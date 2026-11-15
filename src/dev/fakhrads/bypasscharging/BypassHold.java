@@ -15,6 +15,10 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
 /**
  * Holds the battery at the level BypassCharging set: at or above it the battery is not charged
  * and the phone runs from the charger; once the phone has drawn it RESUME_MARGIN lower (a load
@@ -23,9 +27,17 @@ import android.util.Log;
  * It follows ACTION_BATTERY_CHANGED in the app's persistent process, like CoolCharging, and the
  * first update after the process starts always writes, so the kernel vote matches the saved
  * state even after the process died.
+ *
+ * It is the only writer of the vote. That is what lets it skip a write when the vote it last
+ * wrote is already the one it wants: nothing else changes the vote behind its back.
  */
 final class BypassHold {
     private static final String TAG = "BypassCharging";
+
+    static final String NODE =
+            "/sys/devices/platform/soc/soc:mca_charge_interface/charge_enable";
+    // Voter name in the MCA votables, next to ChargeLimit's; "all" covers buck, quick and wireless
+    private static final String VOTE_PREFIX = "bypasscharging all ";
 
     private static final String PREFS = "bypass_charging";
     private static final String KEY_ACTIVE_LIMIT = "active_limit";
@@ -91,13 +103,25 @@ final class BypassHold {
         if (mCharging != null && mCharging == charging) {
             return true;
         }
-        if (!BypassCharging.setCharging(charging)) {
+        if (!setCharging(charging)) {
             return false;
         }
         Log.i(TAG, "Battery " + level + "%, hold " + limit + "%: "
                 + (charging ? "charging" : "running from the charger"));
         mCharging = charging;
         return true;
+    }
+
+    /** Votes for charging the battery or not; the charger keeps running the phone either way. */
+    private static boolean setCharging(boolean charging) {
+        // One vote per write: the driver parses a single "user type value" per store
+        try (FileOutputStream out = new FileOutputStream(NODE)) {
+            out.write((VOTE_PREFIX + (charging ? 1 : 0)).getBytes(StandardCharsets.US_ASCII));
+            return true;
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to write charging " + charging + " to " + NODE, e);
+            return false;
+        }
     }
 
     private static int levelOf(Intent battery) {

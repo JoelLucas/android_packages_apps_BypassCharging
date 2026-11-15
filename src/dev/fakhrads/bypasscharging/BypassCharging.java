@@ -12,9 +12,6 @@ import android.os.BatteryManager;
 import android.util.Log;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 
 /**
  * Turns bypass charging on and off through the MCA charge interface (charge_enable).
@@ -33,6 +30,10 @@ import java.nio.charset.StandardCharsets;
  * The vote is gone after a reboot and BootReceiver turns bypass off. Versions before this one
  * used Lineage charging control; the settings they saved are put back once.
  *
+ * BypassHold is the only writer of the vote: this class saves the state and asks it to apply it.
+ * Every change goes through LOCK, since the tile, the settings page, ControlProvider and the boot
+ * receiver each have their own instance in the same process.
+ *
  * The node is labeled vendor_sysfs_charge_limit and made writable by init.onyx.rc, in the
  * device tree, like ichg_limit.
  */
@@ -46,10 +47,10 @@ final class BypassCharging {
     // Charging resumes this many percent below the held level
     static final int RESUME_MARGIN = 3;
 
-    private static final String NODE =
-            "/sys/devices/platform/soc/soc:mca_charge_interface/charge_enable";
-    // Voter name in the MCA votables, next to ChargeLimit's; "all" covers buck, quick and wireless
-    private static final String VOTE_PREFIX = "bypasscharging all ";
+    private static final String NODE = BypassHold.NODE;
+
+    // Every change of the saved state and the vote that follows it, across all instances
+    private static final Object LOCK = new Object();
 
     private static final String PREFS = "bypass_charging";
     private static final String KEY_MODE = "mode";
@@ -88,9 +89,11 @@ final class BypassCharging {
 
     /** Selects the mode; if bypass is on, it is applied again with the new mode. */
     boolean setMode(int mode) {
-        mLastError = null;
-        mPrefs.edit().putInt(KEY_MODE, mode).apply();
-        return !isActive() || apply();
+        synchronized (LOCK) {
+            mLastError = null;
+            mPrefs.edit().putInt(KEY_MODE, mode).commit();
+            return !isActive() || apply();
+        }
     }
 
     /** The level held while active, otherwise -1. */
@@ -104,31 +107,40 @@ final class BypassCharging {
 
     /** @return true if the new state was applied */
     boolean setActive(boolean active) {
-        mLastError = null;
-        if (!isSupported()) {
-            mLastError = NODE + " is not writable";
-            return false;
+        synchronized (LOCK) {
+            mLastError = null;
+            if (!isSupported()) {
+                mLastError = NODE + " is not writable";
+                return false;
+            }
+            if (active == isActive()) {
+                return true;
+            }
+            if (!active) {
+                return restore();
+            }
+            return apply();
         }
-        if (active == isActive()) {
+    }
+
+    /**
+     * Turns bypass off: the held level is forgotten and BypassHold votes for charging again.
+     *
+     * @return false if the vote could not be written
+     */
+    boolean restore() {
+        synchronized (LOCK) {
+            restoreLegacySettings();
+            mPrefs.edit().remove(KEY_ACTIVE_LIMIT).commit();
+            if (!BypassHold.get(mContext).update()) {
+                mLastError = "writing " + NODE + " failed";
+                return false;
+            }
             return true;
         }
-        if (!active) {
-            restore();
-            return !isActive();
-        }
-        return apply();
     }
 
-    /** Turns bypass off: charging is allowed again and the held level is forgotten. */
-    void restore() {
-        restoreLegacySettings();
-        mPrefs.edit().remove(KEY_ACTIVE_LIMIT).apply();
-        if (!setCharging(true)) {
-            mLastError = "writing " + NODE + " failed";
-        }
-        BypassHold.get(mContext).update();
-    }
-
+    // Called with LOCK held
     private boolean apply() {
         int limit = getMode() == MODE_BYPASS ? batteryLevel() : SMART_LIMIT;
         if (limit < 1) {
@@ -137,27 +149,16 @@ final class BypassCharging {
             return false;
         }
         restoreLegacySettings();
-        mPrefs.edit().putInt(KEY_ACTIVE_LIMIT, Math.min(limit, 100)).apply();
+        // commit: BypassHold reads it back, and a process restart must find it
+        mPrefs.edit().putInt(KEY_ACTIVE_LIMIT, Math.min(limit, 100)).commit();
         // BypassHold decides from the level whether the battery charges now
         if (!BypassHold.get(mContext).update()) {
             mLastError = "writing " + NODE + " failed";
-            mPrefs.edit().remove(KEY_ACTIVE_LIMIT).apply();
-            setCharging(true);
+            mPrefs.edit().remove(KEY_ACTIVE_LIMIT).commit();
+            BypassHold.get(mContext).update();
             return false;
         }
         return true;
-    }
-
-    /** Votes for charging the battery or not; the charger keeps running the phone either way. */
-    static boolean setCharging(boolean charging) {
-        // One vote per write: the driver parses a single "user type value" per store
-        try (FileOutputStream out = new FileOutputStream(NODE)) {
-            out.write((VOTE_PREFIX + (charging ? 1 : 0)).getBytes(StandardCharsets.US_ASCII));
-            return true;
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to write charging " + charging + " to " + NODE, e);
-            return false;
-        }
     }
 
     private int batteryLevel() {
