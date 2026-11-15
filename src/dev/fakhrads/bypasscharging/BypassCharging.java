@@ -25,7 +25,8 @@ import java.io.File;
  *
  * Two modes, both held by BypassHold in the app's persistent process:
  * - smart: charges to 80%, then the phone runs from the charger; charging resumes 3% lower
- * - bypass: holds the battery level it was turned on at, at any level
+ * - bypass: holds the battery level it was turned on at, but never below MIN_HOLD_LEVEL
+ * Below ALWAYS_CHARGE_BELOW the battery always charges, whatever is held.
  *
  * The vote is gone after a reboot and BootReceiver turns bypass off. Versions before this one
  * used Lineage charging control; the settings they saved are put back once.
@@ -46,6 +47,10 @@ final class BypassCharging {
     static final int SMART_LIMIT = 80;
     // Charging resumes this many percent below the held level
     static final int RESUME_MARGIN = 3;
+    // No hold is set lower: from a nearly empty battery it charges up to this first
+    static final int MIN_HOLD_LEVEL = 20;
+    // Below this the battery charges whatever is held, so a phone left on a hold never runs empty
+    static final int ALWAYS_CHARGE_BELOW = 15;
 
     private static final String NODE = BypassHold.NODE;
 
@@ -149,8 +154,9 @@ final class BypassCharging {
             return false;
         }
         restoreLegacySettings();
+        limit = Math.max(MIN_HOLD_LEVEL, Math.min(limit, 100));
         // commit: BypassHold reads it back, and a process restart must find it
-        mPrefs.edit().putInt(KEY_ACTIVE_LIMIT, Math.min(limit, 100)).commit();
+        mPrefs.edit().putInt(KEY_ACTIVE_LIMIT, limit).commit();
         // BypassHold decides from the level whether the battery charges now
         if (!BypassHold.get(mContext).update()) {
             mLastError = "writing " + NODE + " failed";

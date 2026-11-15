@@ -22,7 +22,8 @@ import java.nio.charset.StandardCharsets;
 /**
  * Holds the battery at the level BypassCharging set: at or above it the battery is not charged
  * and the phone runs from the charger; once the phone has drawn it RESUME_MARGIN lower (a load
- * above what the charger gives, or time unplugged) it charges back up to the level.
+ * above what the charger gives, or time unplugged) it charges back up to the level. Below
+ * ALWAYS_CHARGE_BELOW it always charges.
  *
  * It follows ACTION_BATTERY_CHANGED in the app's persistent process, like CoolCharging, and the
  * first update after the process starts always writes, so the kernel vote matches the saved
@@ -88,9 +89,13 @@ final class BypassHold {
 
     private synchronized boolean update(Intent battery) {
         int limit = mPrefs.getInt(KEY_ACTIVE_LIMIT, -1);
+        if (limit >= 0) {
+            // Earlier versions saved any level, down to 1%, where the resume level is never reached
+            limit = Math.max(limit, BypassCharging.MIN_HOLD_LEVEL);
+        }
         int level = levelOf(battery);
         boolean charging;
-        if (limit < 0 || level < 0) {
+        if (limit < 0 || level < 0 || level < BypassCharging.ALWAYS_CHARGE_BELOW) {
             charging = true;
         } else if (level >= limit) {
             charging = false;
