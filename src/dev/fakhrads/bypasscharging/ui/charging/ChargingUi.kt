@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Power
 import androidx.compose.material.icons.filled.PowerOff
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -231,6 +232,14 @@ fun LazyListScope.chargingItems(ui: ChargingUi, notInstalled: Pair<String, Strin
                 icon = Icons.Default.AcUnit,
                 onCheckedChange = { enabled -> ui.act { setCool(enabled) } }
             )
+            SettingSwitch(
+                title = stringResource(R.string.temp_pause_title),
+                subtitle = stringResource(R.string.temp_pause_summary),
+                checked = state.tempPauseEnabled,
+                enabled = state.supported,
+                icon = Icons.Default.Thermostat,
+                onCheckedChange = { enabled -> ui.act { setTempPause(enabled) } }
+            )
             ChoiceList(
                 choices = listOf(
                     Choice(
@@ -342,6 +351,7 @@ private fun ChargingHero(ui: ChargingUi) {
         chips = listOfNotNull(
             modeLabel?.let { Icons.Default.Bolt to it },
             when {
+                state?.tempPaused == true -> Icons.Default.Thermostat to stringResource(R.string.temp_paused)
                 state?.holdIgnored == true -> Icons.Default.Error to stringResource(R.string.kernel_hold_ignored)
                 state?.blockedByOther == true -> Icons.Default.Error to stringResource(R.string.kernel_blocked)
                 else -> null

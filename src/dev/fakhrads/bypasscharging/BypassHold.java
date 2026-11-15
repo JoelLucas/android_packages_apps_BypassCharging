@@ -30,6 +30,10 @@ import java.nio.charset.StandardCharsets;
  * Smart or Bypass mode) and the game hold ZeroEngine sets while a game runs. The lower level wins,
  * so the battery charges only when neither wants it held.
  *
+ * The heat pause (opt-in) also stops charging while the battery is at TEMP_PAUSE_AT or warmer,
+ * until it is below TEMP_RESUME_BELOW, whatever is held. Below ALWAYS_CHARGE_BELOW the battery
+ * still charges, so a hot phone on a charger does not run empty.
+ *
  * It follows ACTION_BATTERY_CHANGED in the app's persistent process, like CoolCharging, and the
  * first update after the process starts always writes, so the kernel vote matches the saved
  * state even after the process died.
@@ -51,6 +55,12 @@ final class BypassHold {
     // elapsedRealtime it was set at, to tell a hold from an earlier boot
     static final String KEY_GAME_HOLD = "game_hold";
     static final String KEY_GAME_HOLD_SINCE = "game_hold_since";
+    static final String KEY_TEMP_PAUSE = "temp_pause";
+
+    // Battery temperature, in tenths of °C, at which the heat pause stops charging and below which
+    // it resumes: above where cool charging's last step (43 °C, 2.5 A) has already slowed it
+    static final int TEMP_PAUSE_AT = 430;
+    static final int TEMP_RESUME_BELOW = 400;
 
     private static BypassHold sInstance;
 
@@ -60,6 +70,8 @@ final class BypassHold {
 
     // Guarded by this; null until the first write
     private Boolean mCharging;
+    // Guarded by this: the heat pause stops charging now
+    private boolean mTempPaused;
 
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
@@ -95,6 +107,11 @@ final class BypassHold {
         return mCharging;
     }
 
+    /** The heat pause stops charging now. */
+    synchronized boolean isTempPaused() {
+        return mTempPaused;
+    }
+
     /** Applies the saved state now; @return false if the kernel vote could not be written. */
     boolean update() {
         return update(mContext.registerReceiver(null,
@@ -122,8 +139,21 @@ final class BypassHold {
     private synchronized boolean update(Intent battery) {
         int limit = holdLevel();
         int level = levelOf(battery);
+        int temp = battery == null ? Integer.MIN_VALUE
+                : battery.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Integer.MIN_VALUE);
+        if (!mPrefs.getBoolean(KEY_TEMP_PAUSE, false) || temp == Integer.MIN_VALUE) {
+            mTempPaused = false;
+        } else if (temp >= TEMP_PAUSE_AT) {
+            mTempPaused = true;
+        } else if (temp < TEMP_RESUME_BELOW) {
+            mTempPaused = false;
+        }
         boolean charging;
-        if (limit < 0 || level < 0 || level < BypassCharging.ALWAYS_CHARGE_BELOW) {
+        if (level >= 0 && level < BypassCharging.ALWAYS_CHARGE_BELOW) {
+            charging = true;
+        } else if (mTempPaused) {
+            charging = false;
+        } else if (limit < 0 || level < 0) {
             charging = true;
         } else if (level >= limit) {
             charging = false;
@@ -139,7 +169,8 @@ final class BypassHold {
         if (!setCharging(charging)) {
             return false;
         }
-        Log.i(TAG, "Battery " + level + "%, hold " + limit + "%: "
+        Log.i(TAG, "Battery " + level + "% " + temp / 10f + " °C, hold " + limit + "%"
+                + (mTempPaused ? ", paused for heat: " : ": ")
                 + (charging ? "charging" : "running from the charger"));
         mCharging = charging;
         return true;

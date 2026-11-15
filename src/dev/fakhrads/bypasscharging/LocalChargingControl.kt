@@ -46,6 +46,8 @@ class LocalChargingControl(context: Context) : ChargingControl {
             blockedByOther = plugged && vote != false && paths?.get("buck") == 0,
             holdIgnored = vote == false && paths != null && paths.values.any { it != 0 },
             coolEnabled = cool.isEnabled(),
+            tempPauseEnabled = bypass.isTempPauseEnabled(),
+            tempPaused = BypassHold.get(context).isTempPaused,
             limitSupported = limit.isSupported(),
             limitEnabled = limit.isEnabled(),
             watts = limit.getWatts(),
@@ -73,6 +75,11 @@ class LocalChargingControl(context: Context) : ChargingControl {
 
     override fun setCool(enabled: Boolean): String? =
         if (cool.setEnabled(enabled)) null else context.getString(R.string.limit_failed)
+
+    override fun setTempPause(enabled: Boolean): String? {
+        val ok = bypass.setTempPause(enabled)
+        return if (ok) null else details(bypass.getLastError())
+    }
 
     override fun setLimit(enabled: Boolean, watts: Int): String? =
         if (limit.set(enabled, watts)) null else context.getString(R.string.limit_failed)

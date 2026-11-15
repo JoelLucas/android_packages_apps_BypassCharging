@@ -22,6 +22,9 @@ data class ChargingState(
     /** Read back from the kernel: we vote to stop charging, but the driver still allows it. */
     val holdIgnored: Boolean = false,
     val coolEnabled: Boolean = false,
+    /** The heat pause is on, and whether it stops charging now. */
+    val tempPauseEnabled: Boolean = false,
+    val tempPaused: Boolean = false,
     val limitSupported: Boolean = false,
     val limitEnabled: Boolean = false,
     val watts: Int = 30,
@@ -45,6 +48,8 @@ interface ChargingControl {
     fun setMode(mode: Int): String?
 
     fun setCool(enabled: Boolean): String?
+
+    fun setTempPause(enabled: Boolean): String?
 
     fun setLimit(enabled: Boolean, watts: Int): String?
 }

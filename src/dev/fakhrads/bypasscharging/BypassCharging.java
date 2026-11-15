@@ -175,6 +175,32 @@ final class BypassCharging {
         }
     }
 
+    boolean isTempPauseEnabled() {
+        return mPrefs.getBoolean(BypassHold.KEY_TEMP_PAUSE, false);
+    }
+
+    /**
+     * Turns the heat pause on or off: no charging from TEMP_PAUSE_AT until the battery is below
+     * TEMP_RESUME_BELOW (BypassHold). It stays on after a reboot.
+     *
+     * @return true if the new state was applied
+     */
+    boolean setTempPause(boolean enabled) {
+        synchronized (LOCK) {
+            mLastError = null;
+            if (enabled && !isSupported()) {
+                mLastError = NODE + " is not writable";
+                return false;
+            }
+            mPrefs.edit().putBoolean(BypassHold.KEY_TEMP_PAUSE, enabled).commit();
+            if (!BypassHold.get(mContext).update()) {
+                mLastError = "writing " + NODE + " failed";
+                return false;
+            }
+            return true;
+        }
+    }
+
     /** @return true if the new state was applied */
     boolean setActive(boolean active) {
         synchronized (LOCK) {

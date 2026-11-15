@@ -26,6 +26,9 @@
     <string name="category_fast_charging">Fast charging</string>
     <string name="cool_title">Cool charging</string>
     <string name="cool_summary">Slows fast charging once the battery passes 40 °C, so it stays around 42 °C. Charging takes a little longer when the phone is warm.</string>
+    <string name="temp_pause_title">Pause when hot</string>
+    <string name="temp_pause_summary">Stops charging the battery from 43 °C and charges again below 40 °C. The phone keeps running from the charger meanwhile.</string>
+    <string name="temp_paused">Paused, battery hot</string>
     <string name="limit_off_title">Full speed</string>
     <string name="limit_off_summary">As fast as the charger and the phone temperature allow</string>
     <string name="limit_on_title">Limit power</string>

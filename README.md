@@ -43,6 +43,12 @@ It is its own voter (`coolcharging`) on the MCA `ichg_limit` node, next to the p
 The driver takes the lowest vote, so neither can make charging faster than the other or than the thermal limits.
 The app's process is persistent and follows `ACTION_BATTERY_CHANGED`; the vote is dropped on unplug.
 
+## Heat pause
+
+Off by default (switch under Fast charging). From 43 °C battery temperature the battery stops charging, through
+the same `charge_enable` vote as bypass, and the phone runs from the charger; below 40 °C it charges again. It
+applies whatever is held, except below 15%, where the battery always charges. It stays on after a reboot.
+
 ## How it works
 
 The app votes on the MCA charge interface, `charge_enable`: `bypasscharging all 0` stops charging the battery

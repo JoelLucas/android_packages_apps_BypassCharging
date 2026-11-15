@@ -26,6 +26,9 @@
     <string name="category_fast_charging">Pengisian cepat</string>
     <string name="cool_title">Pengisian dingin</string>
     <string name="cool_summary">Memperlambat pengisian cepat begitu suhu baterai melewati 40 °C, supaya tetap di sekitar 42 °C. Pengisian sedikit lebih lama saat HP hangat.</string>
+    <string name="temp_pause_title">Jeda saat panas</string>
+    <string name="temp_pause_summary">Berhenti mengisi baterai mulai 43 °C dan mengisi lagi di bawah 40 °C. Selama itu HP tetap berjalan dari charger.</string>
+    <string name="temp_paused">Dijeda, baterai panas</string>
     <string name="limit_off_title">Kecepatan penuh</string>
     <string name="limit_off_summary">Secepat yang diizinkan charger dan suhu HP</string>
     <string name="limit_on_title">Batasi daya</string>
