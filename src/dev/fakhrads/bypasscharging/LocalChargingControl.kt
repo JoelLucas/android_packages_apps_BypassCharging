@@ -76,10 +76,8 @@ class LocalChargingControl(context: Context) : ChargingControl {
         return if (ok) null else details(bypass.getLastError())
     }
 
-    override fun setCool(enabled: Boolean): String? {
-        cool.setEnabled(enabled)
-        return null
-    }
+    override fun setCool(enabled: Boolean): String? =
+        if (cool.setEnabled(enabled)) null else context.getString(R.string.limit_failed)
 
     override fun setLimit(enabled: Boolean, watts: Int): String? =
         if (limit.set(enabled, watts)) null else context.getString(R.string.limit_failed)

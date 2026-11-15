@@ -15,6 +15,11 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 /**
  * Cool charging: slows fast charging step by step once the battery passes 40 °C, so it settles
  * around 42 °C instead of climbing to 47 °C.
@@ -39,6 +44,9 @@ final class CoolCharging {
     private static final int[] STEP_MA = {10000, 7000, 4500, 2500};
     // A step is left once the battery is this much (tenths of °C) below where it starts
     private static final int HYSTERESIS = 5;
+
+    // How long setEnabled waits for the vote to be written on the handler thread
+    private static final long APPLY_TIMEOUT_MS = 2000;
 
     private static final int NO_STEP = -1;
     private static final int UNKNOWN = Integer.MIN_VALUE;
@@ -90,27 +98,43 @@ final class CoolCharging {
         return mPrefs.getBoolean(KEY_ENABLED, true);
     }
 
-    void setEnabled(boolean enabled) {
-        mPrefs.edit().putBoolean(KEY_ENABLED, enabled).apply();
-        mHandler.post(this::update);
+    /**
+     * @return false if the limit that follows could not be written; it is tried again on the next
+     *         battery change. Not to be called on the handler thread.
+     */
+    boolean setEnabled(boolean enabled) {
+        mPrefs.edit().putBoolean(KEY_ENABLED, enabled).commit();
+        // The step state belongs to the handler thread: apply there and wait for the result
+        FutureTask<Boolean> task = new FutureTask<>(this::update);
+        mHandler.post(task);
+        try {
+            return task.get(APPLY_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+            Log.w(TAG, "Cool charging " + enabled + " not applied", e);
+            return false;
+        }
     }
 
-    private void update() {
+    /** @return false if a new vote was needed and could not be written */
+    private boolean update() {
         if (mBattery == null) {
-            return;
+            // No battery state yet: the first broadcast applies the setting
+            return true;
         }
         int temp = mBattery.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, UNKNOWN);
         boolean plugged = mBattery.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0;
         int step = !isEnabled() || !plugged || temp == UNKNOWN ? NO_STEP : stepFor(temp);
         if (step == mStep) {
-            return;
+            return true;
         }
         int ma = step == NO_STEP ? 0 : STEP_MA[step];
-        if (ChargeLimit.vote(USER, ma)) {
-            Log.i(TAG, "Battery " + temp / 10f + " °C: "
-                    + (ma == 0 ? "no limit" : "limit " + ma + " mA"));
-            mStep = step;
+        if (!ChargeLimit.vote(USER, ma)) {
+            return false;
         }
+        Log.i(TAG, "Battery " + temp / 10f + " °C: "
+                + (ma == 0 ? "no limit" : "limit " + ma + " mA"));
+        mStep = step;
+        return true;
     }
 
     private int stepFor(int temp) {
