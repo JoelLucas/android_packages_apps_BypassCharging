@@ -5,13 +5,11 @@
 
 package dev.fakhrads.bypasscharging
 
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.BatteryManager
-import android.service.quicksettings.TileService
 import dev.fakhrads.bypasscharging.ui.charging.ChargingControl
 import dev.fakhrads.bypasscharging.ui.charging.ChargingState
 import java.io.File
@@ -59,20 +57,17 @@ class LocalChargingControl(context: Context) : ChargingControl {
 
     override fun setBypass(enabled: Boolean): String? {
         val ok = bypass.isSupported() && bypass.setActive(enabled)
-        changed()
         return if (ok) null else details(bypass.getLastError())
     }
 
     override fun setMode(mode: Int): String? {
         val ok = bypass.setMode(mode)
-        changed()
         return if (ok) null else details(bypass.getLastError())
     }
 
     /** ZeroEngine's game hold: see BypassCharging.setGameHold. Not on the settings page. */
     fun setGameHold(enabled: Boolean): String? {
         val ok = bypass.setGameHold(enabled)
-        changed()
         return if (ok) null else details(bypass.getLastError())
     }
 
@@ -102,11 +97,6 @@ class LocalChargingControl(context: Context) : ChargingControl {
         } catch (e: IOException) {
             null
         }
-
-    // The tile shows the bypass state, so it has to follow changes made here
-    private fun changed() {
-        TileService.requestListeningState(context, ComponentName(context, BypassTileService::class.java))
-    }
 
     /** The reason and the grant state of each requested permission, to copy into a report. */
     private fun details(error: String?): String {
