@@ -13,6 +13,7 @@ import android.net.Uri
 import android.os.Binder
 import android.os.Bundle
 import android.os.Process
+import dev.fakhrads.bypasscharging.ui.charging.ChargingState
 
 /**
  * Lets ZeroEngine show and change the charging settings on its own charging page. Everything
@@ -44,7 +45,15 @@ class ControlProvider : ContentProvider() {
             return when (method) {
                 METHOD_STATE -> state()
                 METHOD_SET_BYPASS -> result(control.setBypass(args.getBoolean(KEY_ENABLED)))
-                METHOD_SET_MODE -> result(control.setMode(args.getInt(KEY_MODE)))
+                METHOD_SET_MODE -> {
+                    // Only the two modes there are; anything else would be saved and held as Smart
+                    val mode = args.getInt(KEY_MODE, -1)
+                    if (mode == ChargingState.MODE_SMART || mode == ChargingState.MODE_BYPASS) {
+                        result(control.setMode(mode))
+                    } else {
+                        result("unknown mode $mode")
+                    }
+                }
                 METHOD_SET_COOL -> result(control.setCool(args.getBoolean(KEY_ENABLED)))
                 METHOD_SET_GAME_HOLD -> result(control.setGameHold(args.getBoolean(KEY_ENABLED)))
                 METHOD_SET_LIMIT ->
