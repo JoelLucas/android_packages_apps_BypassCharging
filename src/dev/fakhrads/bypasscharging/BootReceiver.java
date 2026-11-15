@@ -11,13 +11,15 @@ import android.content.Intent;
 import android.util.Log;
 
 /**
- * Bypass is always off after a reboot: the charging control settings from before it was turned
- * on are put back as early as the boot allows. A charging-control setting left on would
- * otherwise be applied again on every boot.
+ * The kernel forgets every vote of this app on reboot, so they are written again here.
  *
- * The fast charging limit does stay on: the kernel forgets it on reboot, so it is written again.
- * On LOCKED_BOOT_COMPLETED init may not have opened up the node yet (it does that on
- * dev.bootcomplete); BOOT_COMPLETED writes it again.
+ * Smart mode stays on: BypassHold holds the battery at its limit again. A Bypass mode hold is
+ * turned off, since it holds whatever level it was turned on at, and so is ZeroEngine's game
+ * hold. The fast charging limit stays on and is written again.
+ *
+ * init makes the charge interface nodes writable "on boot", before LOCKED_BOOT_COMPLETED, so
+ * everything is done there, before the first unlock. BOOT_COMPLETED only writes the votes again
+ * in case a write failed, and leaves a bypass that was turned on in between alone.
  */
 public class BootReceiver extends BroadcastReceiver {
     private static final String TAG = "BypassCharging";
@@ -25,25 +27,22 @@ public class BootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
-        if (!Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action)
-                && !Intent.ACTION_BOOT_COMPLETED.equals(action)) {
-            return;
-        }
-        BypassCharging bypass = new BypassCharging(context);
-        // A game hold never outlives the boot it was set in; nothing is running a game yet
         if (Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action)) {
-            bypass.setGameHold(false);
-        }
-        // LOCKED_BOOT_COMPLETED already turned it off: a bypass that is on by BOOT_COMPLETED was
-        // turned on since, and stays
-        if (Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action) || !bypass.isActive()) {
-            Log.i(TAG, "Boot: turning bypass charging off (" + action + ")");
-            bypass.restore();
+            BypassCharging bypass = new BypassCharging(context);
+            Log.i(TAG, "Boot: " + (bypass.getMode() == BypassCharging.MODE_BYPASS
+                    ? "turning bypass charging off" : "keeping smart charging"));
+            if (!bypass.onBoot()) {
+                Log.w(TAG, "Boot: " + bypass.getLastError());
+            }
+        } else if (Intent.ACTION_BOOT_COMPLETED.equals(action)) {
+            BypassHold.get(context).update();
+        } else {
+            return;
         }
 
         ChargeLimit limit = new ChargeLimit(context);
         if (limit.isEnabled() && !limit.apply()) {
-            Log.w(TAG, "Boot: fast charging limit not set yet (" + action + ")");
+            Log.w(TAG, "Boot: fast charging limit not set (" + action + ")");
         }
     }
 }

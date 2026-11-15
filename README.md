@@ -12,7 +12,8 @@ Two modes, chosen on the page that opens with a long press on the tile:
 No hold is set below 20% (from a lower level the battery charges up to 20% first), and below 15% the battery
 always charges, whatever is held.
 
-Bypass turns itself off after every reboot (`BootReceiver`, on `LOCKED_BOOT_COMPLETED`).
+Smart mode stays on after a reboot. A Bypass mode hold turns itself off, since it holds whatever level it was
+turned on at (`BootReceiver`, on `LOCKED_BOOT_COMPLETED`).
 
 ## Game hold
 

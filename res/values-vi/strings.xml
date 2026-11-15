@@ -37,5 +37,5 @@
     <string name="hero_stat_usb">Cổng USB</string>
     <string name="hero_stat_board">Bo mạch</string>
     <string name="hero_charging_title">Đang sạc %1$.1f W</string>
-    <string name="footer">Bypass tự tắt sau khi khởi động lại. Khi đang giữ, pin không được sạc và bộ sạc tiếp tục cấp điện cho điện thoại ở toàn bộ công suất đầu vào; Cài đặt &gt; Pin &gt; Điều khiển sạc không được dùng.\n\nGiới hạn công suất vẫn bật sau khi khởi động lại. Nó giới hạn công suất đi vào pin, nên bản thân bộ sạc tiêu thụ nhiều hơn một chút. Bảo vệ quá nhiệt vẫn có thể làm chậm sạc thêm.\n\nSạc mát giảm dòng theo từng bậc từ 40 °C (10 A, rồi 7 A ở 41 °C, 4.5 A ở 42 °C và 2.5 A từ 43 °C) và nới giới hạn lại khi pin nguội.</string>
+    <string name="footer">Chế độ Thông minh vẫn bật sau khi khởi động lại; chế độ Bypass tự tắt. Khi đang giữ, pin không được sạc và bộ sạc tiếp tục cấp điện cho điện thoại ở toàn bộ công suất đầu vào; Cài đặt &gt; Pin &gt; Điều khiển sạc không được dùng.\n\nGiới hạn công suất vẫn bật sau khi khởi động lại. Nó giới hạn công suất đi vào pin, nên bản thân bộ sạc tiêu thụ nhiều hơn một chút. Bảo vệ quá nhiệt vẫn có thể làm chậm sạc thêm.\n\nSạc mát giảm dòng theo từng bậc từ 40 °C (10 A, rồi 7 A ở 41 °C, 4.5 A ở 42 °C và 2.5 A từ 43 °C) và nới giới hạn lại khi pin nguội.</string>
 </resources>

@@ -37,5 +37,5 @@
     <string name="hero_stat_usb">Port USB</string>
     <string name="hero_stat_board">Deska</string>
     <string name="hero_charging_title">Nabíjení %1$.1f W</string>
-    <string name="footer">Bypass se po restartu sám vypne. Dokud drží, baterie se nenabíjí a nabíječka napájí telefon plným vstupním výkonem; Nastavení &gt; Baterie &gt; Řízení nabíjení se nepoužívá.\n\nLimit výkonu zůstane zapnutý i po restartu. Omezuje výkon proudící do baterie, takže samotná nabíječka odebírá o něco víc. Ochrana proti přehřátí může nabíjení dál zpomalit.\n\nChladné nabíjení snižuje proud postupně od 40 °C (10 A, pak 7 A při 41 °C, 4.5 A při 42 °C a 2.5 A od 43 °C) a znovu limit uvolňuje, jak baterie chladne.</string>
+    <string name="footer">Režim Chytré zůstane po restartu zapnutý; režim Bypass se sám vypne. Dokud drží, baterie se nenabíjí a nabíječka napájí telefon plným vstupním výkonem; Nastavení &gt; Baterie &gt; Řízení nabíjení se nepoužívá.\n\nLimit výkonu zůstane zapnutý i po restartu. Omezuje výkon proudící do baterie, takže samotná nabíječka odebírá o něco víc. Ochrana proti přehřátí může nabíjení dál zpomalit.\n\nChladné nabíjení snižuje proud postupně od 40 °C (10 A, pak 7 A při 41 °C, 4.5 A při 42 °C a 2.5 A od 43 °C) a znovu limit uvolňuje, jak baterie chladne.</string>
 </resources>

@@ -32,8 +32,9 @@ import java.io.File;
  * ZeroEngine can also hold the battery while a game runs (setGameHold), on top of the user's
  * setting and without changing it; BypassHold combines the two.
  *
- * The vote is gone after a reboot and BootReceiver turns bypass off. Versions before this one
- * used Lineage charging control; the settings they saved are put back once.
+ * The vote is gone after a reboot. BootReceiver keeps Smart mode on (BypassHold votes again) and
+ * turns a Bypass mode hold off, since that holds whatever level it was turned on at. Versions
+ * before this one used Lineage charging control; the settings they saved are put back once.
  *
  * BypassHold is the only writer of the vote: this class saves the state and asks it to apply it.
  * Every change goes through LOCK, since the tile, the settings page, ControlProvider and the boot
@@ -193,11 +194,36 @@ final class BypassCharging {
     }
 
     /**
+     * After a reboot, before the first unlock: Smart mode stays on and BypassHold holds its limit
+     * again; a Bypass mode hold and the game hold are dropped.
+     *
+     * @return false if the vote could not be written
+     */
+    boolean onBoot() {
+        synchronized (LOCK) {
+            mLastError = null;
+            restoreLegacySettings();
+            SharedPreferences.Editor editor = mPrefs.edit()
+                    .remove(BypassHold.KEY_GAME_HOLD)
+                    .remove(BypassHold.KEY_GAME_HOLD_SINCE);
+            if (getMode() == MODE_BYPASS) {
+                editor.remove(KEY_ACTIVE_LIMIT);
+            }
+            editor.commit();
+            if (!BypassHold.get(mContext).update()) {
+                mLastError = "writing " + NODE + " failed";
+                return false;
+            }
+            return true;
+        }
+    }
+
+    /**
      * Turns bypass off: the held level is forgotten and BypassHold votes for charging again.
      *
      * @return false if the vote could not be written
      */
-    boolean restore() {
+    private boolean restore() {
         synchronized (LOCK) {
             restoreLegacySettings();
             mPrefs.edit().remove(KEY_ACTIVE_LIMIT).commit();
