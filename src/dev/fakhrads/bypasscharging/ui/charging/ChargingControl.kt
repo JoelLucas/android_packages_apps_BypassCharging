@@ -15,6 +15,12 @@ data class ChargingState(
     val smartLimit: Int = 80,
     /** The level ZeroEngine's game hold keeps, on top of the user's setting; -1 if none. */
     val gameLimit: Int = -1,
+    /** Read back from the kernel: our vote stops charging, and the driver took it. */
+    val holding: Boolean = false,
+    /** Read back from the kernel: plugged in and we allow charging, but another voter stops it. */
+    val blockedByOther: Boolean = false,
+    /** Read back from the kernel: we vote to stop charging, but the driver still allows it. */
+    val holdIgnored: Boolean = false,
     val coolEnabled: Boolean = false,
     val limitSupported: Boolean = false,
     val limitEnabled: Boolean = false,

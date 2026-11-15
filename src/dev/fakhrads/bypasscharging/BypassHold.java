@@ -90,6 +90,11 @@ final class BypassHold {
                 null, mHandler);
     }
 
+    /** The vote last written: true for charging, false for holding; null before the first. */
+    synchronized Boolean getVote() {
+        return mCharging;
+    }
+
     /** Applies the saved state now; @return false if the kernel vote could not be written. */
     boolean update() {
         return update(mContext.registerReceiver(null,

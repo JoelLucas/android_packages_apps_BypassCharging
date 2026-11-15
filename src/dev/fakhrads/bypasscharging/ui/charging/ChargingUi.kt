@@ -267,7 +267,8 @@ private fun ChargingHero(ui: ChargingUi) {
     val title: String
     val subtitle: String
     when {
-        held && charging -> {
+        // The kernel says whether the hold stops charging now; the reading lags behind it
+        held && charging && !state!!.holding -> {
             title = stringResource(R.string.hero_charging_title, reading.watts)
             subtitle = if (bypass && !game) stringResource(R.string.subtitle_bypass_from, limit) else holdText
         }
@@ -311,7 +312,14 @@ private fun ChargingHero(ui: ChargingUi) {
             HeroStat(stringResource(R.string.hero_stat_usb), temp(reading.usbTemp)),
             HeroStat(stringResource(R.string.hero_stat_board), temp(reading.boardTemp)),
         ),
-        chips = listOfNotNull(modeLabel?.let { Icons.Default.Bolt to it }),
+        chips = listOfNotNull(
+            modeLabel?.let { Icons.Default.Bolt to it },
+            when {
+                state?.holdIgnored == true -> Icons.Default.Error to stringResource(R.string.kernel_hold_ignored)
+                state?.blockedByOther == true -> Icons.Default.Error to stringResource(R.string.kernel_blocked)
+                else -> null
+            }
+        ),
         checked = if (state?.installed == true) active else null,
         switchEnabled = state?.supported == true,
         onCheckedChange = { enabled -> ui.act { setBypass(enabled) } }

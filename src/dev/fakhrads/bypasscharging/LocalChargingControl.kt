@@ -7,10 +7,15 @@ package dev.fakhrads.bypasscharging
 
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.os.BatteryManager
 import android.service.quicksettings.TileService
 import dev.fakhrads.bypasscharging.ui.charging.ChargingControl
 import dev.fakhrads.bypasscharging.ui.charging.ChargingState
+import java.io.File
+import java.io.IOException
 
 /**
  * Charging control in this app's process: the settings page and ControlProvider (which
@@ -24,6 +29,12 @@ class LocalChargingControl(context: Context) : ChargingControl {
 
     override fun state(): ChargingState {
         val supported = bypass.isSupported()
+        // What the kernel does, not only what is saved: the effective vote of each charging path
+        // and the vote BypassHold last wrote
+        val paths = readChargeEnable()
+        val vote = BypassHold.get(context).vote
+        val plugged = (context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            ?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0) != 0
         return ChargingState(
             installed = true,
             supported = supported,
@@ -32,6 +43,10 @@ class LocalChargingControl(context: Context) : ChargingControl {
             activeLimit = bypass.getActiveLimit(),
             smartLimit = BypassCharging.SMART_LIMIT,
             gameLimit = bypass.getGameHoldLevel(),
+            holding = vote == false && !paths.isNullOrEmpty() && paths.values.all { it == 0 },
+            // The buck path charges the battery on any charger; quick only adds the charge pumps
+            blockedByOther = plugged && vote != false && paths?.get("buck") == 0,
+            holdIgnored = vote == false && paths != null && paths.values.any { it != 0 },
             coolEnabled = cool.isEnabled(),
             limitSupported = limit.isSupported(),
             limitEnabled = limit.isEnabled(),
@@ -68,6 +83,27 @@ class LocalChargingControl(context: Context) : ChargingControl {
 
     override fun setLimit(enabled: Boolean, watts: Int): String? =
         if (limit.set(enabled, watts)) null else context.getString(R.string.limit_failed)
+
+    /**
+     * The charge_enable node: one "<path> eff_client:<voter> <value>" line per charging path that
+     * has votes (buck, quick), with the AND of every voter's vote as the value. The voter is the
+     * last one to vote, not the one that decided, so only the values are used. Null if the node
+     * cannot be read.
+     */
+    private fun readChargeEnable(): Map<String, Int>? =
+        try {
+            File(BypassHold.NODE).readLines().mapNotNull { line ->
+                val fields = line.trim().split(' ')
+                val value = fields.lastOrNull()?.toIntOrNull()
+                if (fields.size >= 3 && fields[1].startsWith("eff_client:") && value != null) {
+                    fields[0] to value
+                } else {
+                    null
+                }
+            }.toMap()
+        } catch (e: IOException) {
+            null
+        }
 
     // The tile shows the bypass state, so it has to follow changes made here
     private fun changed() {

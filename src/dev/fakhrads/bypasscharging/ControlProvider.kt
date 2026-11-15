@@ -75,6 +75,9 @@ class ControlProvider : ContentProvider() {
             putInt(KEY_SMART_LIMIT, s.smartLimit)
             putBoolean(KEY_GAME_HOLD, s.gameLimit >= 0)
             putInt(KEY_GAME_LIMIT, s.gameLimit)
+            putBoolean(KEY_HOLDING, s.holding)
+            putBoolean(KEY_BLOCKED_BY_OTHER, s.blockedByOther)
+            putBoolean(KEY_HOLD_IGNORED, s.holdIgnored)
             putBoolean(KEY_COOL_ENABLED, s.coolEnabled)
             putBoolean(KEY_LIMIT_SUPPORTED, s.limitSupported)
             putBoolean(KEY_LIMIT_ENABLED, s.limitEnabled)
@@ -129,6 +132,9 @@ class ControlProvider : ContentProvider() {
         const val KEY_SMART_LIMIT = "smart_limit"
         const val KEY_GAME_HOLD = "game_hold"
         const val KEY_GAME_LIMIT = "game_limit"
+        const val KEY_HOLDING = "holding"
+        const val KEY_BLOCKED_BY_OTHER = "blocked_by_other"
+        const val KEY_HOLD_IGNORED = "hold_ignored"
         const val KEY_COOL_ENABLED = "cool_enabled"
         const val KEY_LIMIT_SUPPORTED = "limit_supported"
         const val KEY_LIMIT_ENABLED = "limit_enabled"
