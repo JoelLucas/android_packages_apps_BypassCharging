@@ -219,6 +219,18 @@ fun LazyListScope.chargingItems(ui: ChargingUi, notInstalled: Pair<String, Strin
                 enabled = state.supported,
                 onSelect = { mode -> ui.act { setMode(mode) } }
             )
+            AnimatedVisibility(visible = state.mode == ChargingState.MODE_SMART) {
+                SettingSlider(
+                    title = stringResource(R.string.smart_limit_title),
+                    value = state.smartLimit,
+                    min = state.minSmartLimit,
+                    max = state.maxSmartLimit,
+                    step = state.stepSmartLimit,
+                    enabled = state.supported,
+                    valueLabel = { "$it%" },
+                    onValueChange = { limit -> ui.act { setSmartLimit(limit) } }
+                )
+            }
         }
     }
 

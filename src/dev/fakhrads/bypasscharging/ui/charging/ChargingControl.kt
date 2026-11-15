@@ -13,6 +13,9 @@ data class ChargingState(
     val mode: Int = MODE_SMART,
     val activeLimit: Int = -1,
     val smartLimit: Int = 80,
+    val minSmartLimit: Int = 60,
+    val maxSmartLimit: Int = 95,
+    val stepSmartLimit: Int = 5,
     /** The level ZeroEngine's game hold keeps, on top of the user's setting; -1 if none. */
     val gameLimit: Int = -1,
     /** Read back from the kernel: our vote stops charging, and the driver took it. */
@@ -46,6 +49,8 @@ interface ChargingControl {
     fun setBypass(enabled: Boolean): String?
 
     fun setMode(mode: Int): String?
+
+    fun setSmartLimit(limit: Int): String?
 
     fun setCool(enabled: Boolean): String?
 

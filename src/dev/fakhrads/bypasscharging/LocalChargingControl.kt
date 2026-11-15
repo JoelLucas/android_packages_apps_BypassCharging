@@ -39,7 +39,10 @@ class LocalChargingControl(context: Context) : ChargingControl {
             active = supported && bypass.isActive(),
             mode = bypass.getMode(),
             activeLimit = bypass.getActiveLimit(),
-            smartLimit = BypassCharging.SMART_LIMIT,
+            smartLimit = bypass.getSmartLimit(),
+            minSmartLimit = BypassCharging.MIN_SMART_LIMIT,
+            maxSmartLimit = BypassCharging.MAX_SMART_LIMIT,
+            stepSmartLimit = BypassCharging.STEP_SMART_LIMIT,
             gameLimit = bypass.getGameHoldLevel(),
             holding = vote == false && !paths.isNullOrEmpty() && paths.values.all { it == 0 },
             // The buck path charges the battery on any charger; quick only adds the charge pumps
@@ -64,6 +67,11 @@ class LocalChargingControl(context: Context) : ChargingControl {
 
     override fun setMode(mode: Int): String? {
         val ok = bypass.setMode(mode)
+        return if (ok) null else details(bypass.getLastError())
+    }
+
+    override fun setSmartLimit(limit: Int): String? {
+        val ok = bypass.setSmartLimit(limit)
         return if (ok) null else details(bypass.getLastError())
     }
 

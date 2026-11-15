@@ -5,7 +5,8 @@ charging and the charger powers the phone. No root.
 
 Two modes, chosen on the page that opens with a long press on the tile:
 
-- **Smart**: charge up to 80%, then run from the charger; charging resumes at 77%.
+- **Smart**: charge up to 80%, then run from the charger; charging resumes at 77%. The limit can be set from 60%
+  to 95%, in steps of 5%, on the same page.
 - **Bypass**: hold the battery at the level it had when the tile was turned on. The battery only tops up again
   once it is 3% lower (when the phone draws more than the charger gives).
 

@@ -25,7 +25,8 @@ import java.io.File;
  * the rest from the battery.
  *
  * Two modes, both held by BypassHold in the app's persistent process:
- * - smart: charges to 80%, then the phone runs from the charger; charging resumes 3% lower
+ * - smart: charges to a limit (80% unless set, 60% to 95%), then the phone runs from the
+ *   charger; charging resumes 3% lower
  * - bypass: holds the battery level it was turned on at, but never below MIN_HOLD_LEVEL
  * Below ALWAYS_CHARGE_BELOW the battery always charges, whatever is held.
  *
@@ -50,6 +51,9 @@ final class BypassCharging {
     static final int MODE_BYPASS = 1;
 
     static final int SMART_LIMIT = 80;
+    static final int MIN_SMART_LIMIT = 60;
+    static final int MAX_SMART_LIMIT = 95;
+    static final int STEP_SMART_LIMIT = 5;
     // Charging resumes this many percent below the held level
     static final int RESUME_MARGIN = 3;
     // No hold is set lower: from a nearly empty battery it charges up to this first
@@ -64,6 +68,8 @@ final class BypassCharging {
 
     private static final String PREFS = "bypass_charging";
     private static final String KEY_MODE = "mode";
+    // The level Smart mode charges to
+    private static final String KEY_SMART_LIMIT = "smart_limit";
     // Present only while bypass is on: the level it holds
     private static final String KEY_ACTIVE_LIMIT = "active_limit";
     // Lineage charging control settings saved by earlier versions
@@ -103,6 +109,20 @@ final class BypassCharging {
             mLastError = null;
             mPrefs.edit().putInt(KEY_MODE, mode).commit();
             return !isActive() || apply();
+        }
+    }
+
+    int getSmartLimit() {
+        return mPrefs.getInt(KEY_SMART_LIMIT, SMART_LIMIT);
+    }
+
+    /** Sets the level Smart mode charges to; if it holds now, it holds the new level. */
+    boolean setSmartLimit(int limit) {
+        synchronized (LOCK) {
+            mLastError = null;
+            limit = Math.max(MIN_SMART_LIMIT, Math.min(limit, MAX_SMART_LIMIT));
+            mPrefs.edit().putInt(KEY_SMART_LIMIT, limit).commit();
+            return !isActive() || getMode() != MODE_SMART || apply();
         }
     }
 
@@ -263,7 +283,7 @@ final class BypassCharging {
 
     // Called with LOCK held
     private boolean apply() {
-        int limit = getMode() == MODE_BYPASS ? batteryLevel() : SMART_LIMIT;
+        int limit = getMode() == MODE_BYPASS ? batteryLevel() : getSmartLimit();
         if (limit < 1) {
             Log.e(TAG, "Unknown battery level");
             mLastError = "battery level " + limit;
