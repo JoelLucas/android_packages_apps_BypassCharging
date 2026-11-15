@@ -31,6 +31,7 @@ class LocalChargingControl(context: Context) : ChargingControl {
             mode = bypass.getMode(),
             activeLimit = bypass.getActiveLimit(),
             smartLimit = BypassCharging.SMART_LIMIT,
+            gameLimit = bypass.getGameHoldLevel(),
             coolEnabled = cool.isEnabled(),
             limitSupported = limit.isSupported(),
             limitEnabled = limit.isEnabled(),
@@ -49,6 +50,13 @@ class LocalChargingControl(context: Context) : ChargingControl {
 
     override fun setMode(mode: Int): String? {
         val ok = bypass.setMode(mode)
+        changed()
+        return if (ok) null else details(bypass.getLastError())
+    }
+
+    /** ZeroEngine's game hold: see BypassCharging.setGameHold. Not on the settings page. */
+    fun setGameHold(enabled: Boolean): String? {
+        val ok = bypass.setGameHold(enabled)
         changed()
         return if (ok) null else details(bypass.getLastError())
     }

@@ -49,6 +49,10 @@ public class BypassTileService extends TileService {
             tile.setSubtitle(getString(mBypass.getMode() == BypassCharging.MODE_BYPASS
                     ? R.string.subtitle_bypass_on : R.string.subtitle_smart_on,
                     mBypass.getActiveLimit()));
+        } else if (mBypass.getGameHoldLevel() >= 0) {
+            // Bypass is off, but ZeroEngine holds the battery for a game
+            tile.setState(Tile.STATE_INACTIVE);
+            tile.setSubtitle(getString(R.string.subtitle_game_hold, mBypass.getGameHoldLevel()));
         } else {
             tile.setState(Tile.STATE_INACTIVE);
             tile.setSubtitle(getString(mBypass.getMode() == BypassCharging.MODE_BYPASS

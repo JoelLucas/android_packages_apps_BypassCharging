@@ -30,6 +30,10 @@ public class BootReceiver extends BroadcastReceiver {
             return;
         }
         BypassCharging bypass = new BypassCharging(context);
+        // A game hold never outlives the boot it was set in; nothing is running a game yet
+        if (Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action)) {
+            bypass.setGameHold(false);
+        }
         // LOCKED_BOOT_COMPLETED already turned it off: a bypass that is on by BOOT_COMPLETED was
         // turned on since, and stays
         if (Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action) || !bypass.isActive()) {

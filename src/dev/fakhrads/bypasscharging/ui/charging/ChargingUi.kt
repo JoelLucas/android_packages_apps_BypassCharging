@@ -251,28 +251,33 @@ private fun ChargingHero(ui: ChargingUi) {
     val state = ui.state
     val reading = ui.reading
     val active = state?.active == true
+    // ZeroEngine's game hold, on top of the user's setting; the lower level is the one held
+    val gameLimit = state?.gameLimit ?: -1
+    val game = gameLimit >= 0 && (!active || gameLimit <= state!!.activeLimit)
+    val held = active || gameLimit >= 0
     // The battery is taking power: before the limit is reached this is true while active too
     val charging = reading.charging && reading.watts > 0.1
     val bypass = state?.mode == ChargingState.MODE_BYPASS
-    val limit = state?.activeLimit ?: 0
+    val limit = if (game) gameLimit else state?.activeLimit ?: 0
+    val holdText = when {
+        game -> stringResource(R.string.subtitle_game_hold, limit)
+        bypass -> stringResource(R.string.subtitle_bypass_on, limit)
+        else -> stringResource(R.string.subtitle_smart_on, limit)
+    }
     val title: String
     val subtitle: String
     when {
-        active && charging -> {
+        held && charging -> {
             title = stringResource(R.string.hero_charging_title, reading.watts)
-            subtitle = stringResource(
-                if (bypass) R.string.subtitle_bypass_from else R.string.subtitle_smart_on, limit
-            )
+            subtitle = if (bypass && !game) stringResource(R.string.subtitle_bypass_from, limit) else holdText
         }
-        active -> {
+        held -> {
             title = stringResource(R.string.tile_label)
             // Held at the limit the charger runs the phone; what the battery still gives shows
             // when the charger is not enough
             subtitle = stringResource(
                 R.string.hero_battery_power,
-                stringResource(
-                    if (bypass) R.string.subtitle_bypass_on else R.string.subtitle_smart_on, limit
-                ),
+                holdText,
                 String.format(Locale.getDefault(), "%.1f", if (reading.watts > 0.05) -reading.watts else 0.0)
             )
         }
@@ -298,9 +303,9 @@ private fun ChargingHero(ui: ChargingUi) {
     HeroCard(
         title = title,
         subtitle = subtitle,
-        icon = if (active) Icons.Default.Power else if (charging) Icons.Default.BatteryChargingFull
+        icon = if (held) Icons.Default.Power else if (charging) Icons.Default.BatteryChargingFull
         else Icons.Default.PowerOff,
-        active = active || charging,
+        active = held || charging,
         stats = listOf(
             HeroStat(stringResource(R.string.hero_stat_battery), temp(reading.batteryTemp)),
             HeroStat(stringResource(R.string.hero_stat_usb), temp(reading.usbTemp)),

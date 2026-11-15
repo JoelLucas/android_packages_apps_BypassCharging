@@ -13,6 +13,8 @@ data class ChargingState(
     val mode: Int = MODE_SMART,
     val activeLimit: Int = -1,
     val smartLimit: Int = 80,
+    /** The level ZeroEngine's game hold keeps, on top of the user's setting; -1 if none. */
+    val gameLimit: Int = -1,
     val coolEnabled: Boolean = false,
     val limitSupported: Boolean = false,
     val limitEnabled: Boolean = false,

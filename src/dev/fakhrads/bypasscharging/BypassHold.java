@@ -13,6 +13,7 @@ import android.content.SharedPreferences;
 import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.SystemClock;
 import android.util.Log;
 
 import java.io.FileOutputStream;
@@ -24,6 +25,10 @@ import java.nio.charset.StandardCharsets;
  * and the phone runs from the charger; once the phone has drawn it RESUME_MARGIN lower (a load
  * above what the charger gives, or time unplugged) it charges back up to the level. Below
  * ALWAYS_CHARGE_BELOW it always charges.
+ *
+ * Two holds can be set, and this is the one place that combines them: the user's (bypass on, in
+ * Smart or Bypass mode) and the game hold ZeroEngine sets while a game runs. The lower level wins,
+ * so the battery charges only when neither wants it held.
  *
  * It follows ACTION_BATTERY_CHANGED in the app's persistent process, like CoolCharging, and the
  * first update after the process starts always writes, so the kernel vote matches the saved
@@ -42,6 +47,10 @@ final class BypassHold {
 
     private static final String PREFS = "bypass_charging";
     private static final String KEY_ACTIVE_LIMIT = "active_limit";
+    // Present only while ZeroEngine holds the battery for a game: the level it holds, and the
+    // elapsedRealtime it was set at, to tell a hold from an earlier boot
+    static final String KEY_GAME_HOLD = "game_hold";
+    static final String KEY_GAME_HOLD_SINCE = "game_hold_since";
 
     private static BypassHold sInstance;
 
@@ -87,12 +96,26 @@ final class BypassHold {
                 new IntentFilter(Intent.ACTION_BATTERY_CHANGED)));
     }
 
-    private synchronized boolean update(Intent battery) {
-        int limit = mPrefs.getInt(KEY_ACTIVE_LIMIT, -1);
-        if (limit >= 0) {
-            // Earlier versions saved any level, down to 1%, where the resume level is never reached
-            limit = Math.max(limit, BypassCharging.MIN_HOLD_LEVEL);
+    /** The level to hold: the lower of the user's hold and the game hold; -1 if neither is on. */
+    private int holdLevel() {
+        int user = mPrefs.getInt(KEY_ACTIVE_LIMIT, -1);
+        int game = gameHoldLevel(mPrefs);
+        int limit = user < 0 ? game : game < 0 ? user : Math.min(user, game);
+        // Earlier versions saved any level, down to 1%, where the resume level is never reached
+        return limit < 0 ? -1 : Math.max(limit, BypassCharging.MIN_HOLD_LEVEL);
+    }
+
+    /** The level the game hold keeps; -1 if there is none. */
+    static int gameHoldLevel(SharedPreferences prefs) {
+        // Set before this boot: the boot receiver drops it, but the process starts earlier
+        if (prefs.getLong(KEY_GAME_HOLD_SINCE, Long.MAX_VALUE) > SystemClock.elapsedRealtime()) {
+            return -1;
         }
+        return prefs.getInt(KEY_GAME_HOLD, -1);
+    }
+
+    private synchronized boolean update(Intent battery) {
+        int limit = holdLevel();
         int level = levelOf(battery);
         boolean charging;
         if (limit < 0 || level < 0 || level < BypassCharging.ALWAYS_CHARGE_BELOW) {

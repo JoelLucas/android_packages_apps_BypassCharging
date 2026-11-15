@@ -14,6 +14,16 @@ always charges, whatever is held.
 
 Bypass turns itself off after every reboot (`BootReceiver`, on `LOCKED_BOOT_COMPLETED`).
 
+## Game hold
+
+ZeroEngine shows the same settings on its charging page through `ControlProvider`
+(`dev.fakhrads.bypasscharging.control`, `call()` only, system uid or this app's signature). While a game runs it
+calls `set_game_hold` with `enabled` true: the battery is held at its current level (never below 20%), whatever
+the user's mode, without changing the mode or the bypass switch. `enabled` false lets it go and the user's own
+setting applies again. With both on, the lower level is held. A second `true` while held keeps the level, the
+hold survives a restart of the app's process (it is saved with `commit()`), and it is dropped on every boot.
+`state` reports it as `game_hold` and `game_limit`.
+
 ## Cool charging
 
 On by default (switch under Fast charging). The charger driver's JEITA tables keep full current up to 48 °C,

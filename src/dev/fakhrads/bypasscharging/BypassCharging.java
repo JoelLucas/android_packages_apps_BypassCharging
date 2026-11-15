@@ -9,6 +9,7 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.BatteryManager;
+import android.os.SystemClock;
 import android.util.Log;
 
 import java.io.File;
@@ -27,6 +28,9 @@ import java.io.File;
  * - smart: charges to 80%, then the phone runs from the charger; charging resumes 3% lower
  * - bypass: holds the battery level it was turned on at, but never below MIN_HOLD_LEVEL
  * Below ALWAYS_CHARGE_BELOW the battery always charges, whatever is held.
+ *
+ * ZeroEngine can also hold the battery while a game runs (setGameHold), on top of the user's
+ * setting and without changing it; BypassHold combines the two.
  *
  * The vote is gone after a reboot and BootReceiver turns bypass off. Versions before this one
  * used Lineage charging control; the settings they saved are put back once.
@@ -108,6 +112,66 @@ final class BypassCharging {
 
     boolean isActive() {
         return mPrefs.contains(KEY_ACTIVE_LIMIT);
+    }
+
+    /** The level the game hold keeps; -1 if there is none. */
+    int getGameHoldLevel() {
+        return BypassHold.gameHoldLevel(mPrefs);
+    }
+
+    /**
+     * Holds the battery at its current level (never below MIN_HOLD_LEVEL) while a game runs, or
+     * lets it go. It is set on top of the user's setting: the mode and bypass stay as they are,
+     * and the lower of the two holds wins. Holding again while held keeps the level it holds, so
+     * a game that runs the battery down does not lower it. It is gone after a reboot.
+     *
+     * @return true if the new state was applied
+     */
+    boolean setGameHold(boolean hold) {
+        synchronized (LOCK) {
+            mLastError = null;
+            if (!hold) {
+                // Released even when the node is not writable, so nothing is left behind
+                mPrefs.edit()
+                        .remove(BypassHold.KEY_GAME_HOLD)
+                        .remove(BypassHold.KEY_GAME_HOLD_SINCE)
+                        .commit();
+                if (!BypassHold.get(mContext).update()) {
+                    mLastError = "writing " + NODE + " failed";
+                    return false;
+                }
+                return true;
+            }
+            if (!isSupported()) {
+                mLastError = NODE + " is not writable";
+                return false;
+            }
+            if (getGameHoldLevel() >= 0) {
+                return true;
+            }
+            int level = batteryLevel();
+            if (level < 1) {
+                Log.e(TAG, "Unknown battery level");
+                mLastError = "battery level " + level;
+                return false;
+            }
+            // commit: a process restart during the game keeps it until ZeroEngine lets it go
+            mPrefs.edit()
+                    .putInt(BypassHold.KEY_GAME_HOLD,
+                            Math.max(MIN_HOLD_LEVEL, Math.min(level, 100)))
+                    .putLong(BypassHold.KEY_GAME_HOLD_SINCE, SystemClock.elapsedRealtime())
+                    .commit();
+            if (!BypassHold.get(mContext).update()) {
+                mLastError = "writing " + NODE + " failed";
+                mPrefs.edit()
+                        .remove(BypassHold.KEY_GAME_HOLD)
+                        .remove(BypassHold.KEY_GAME_HOLD_SINCE)
+                        .commit();
+                BypassHold.get(mContext).update();
+                return false;
+            }
+            return true;
+        }
     }
 
     /** @return true if the new state was applied */

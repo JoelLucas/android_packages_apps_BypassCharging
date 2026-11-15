@@ -22,6 +22,12 @@ import android.os.Process
  * Only call() is used: "state" returns the settings, the "set_*" methods change one and return
  * "ok" and, when it failed, "error". Callers must be the system uid or signed with this app's
  * key; call() is not covered by the provider's read and write permissions, so it checks itself.
+ *
+ * "set_game_hold" with "enabled" true holds the battery at its current level (never below 20%)
+ * while a game runs, whatever the user's mode, without changing the mode or bypass; false lets
+ * it go, so the user's own setting applies again. Holding while held keeps the level. The hold
+ * survives a restart of this process but not a reboot. "state" reports it as "game_hold" and
+ * "game_limit".
  */
 class ControlProvider : ContentProvider() {
 
@@ -40,6 +46,7 @@ class ControlProvider : ContentProvider() {
                 METHOD_SET_BYPASS -> result(control.setBypass(args.getBoolean(KEY_ENABLED)))
                 METHOD_SET_MODE -> result(control.setMode(args.getInt(KEY_MODE)))
                 METHOD_SET_COOL -> result(control.setCool(args.getBoolean(KEY_ENABLED)))
+                METHOD_SET_GAME_HOLD -> result(control.setGameHold(args.getBoolean(KEY_ENABLED)))
                 METHOD_SET_LIMIT ->
                     result(control.setLimit(args.getBoolean(KEY_ENABLED), args.getInt(KEY_WATTS)))
                 else -> throw IllegalArgumentException("Unknown method $method")
@@ -66,6 +73,8 @@ class ControlProvider : ContentProvider() {
             putInt(KEY_MODE, s.mode)
             putInt(KEY_ACTIVE_LIMIT, s.activeLimit)
             putInt(KEY_SMART_LIMIT, s.smartLimit)
+            putBoolean(KEY_GAME_HOLD, s.gameLimit >= 0)
+            putInt(KEY_GAME_LIMIT, s.gameLimit)
             putBoolean(KEY_COOL_ENABLED, s.coolEnabled)
             putBoolean(KEY_LIMIT_SUPPORTED, s.limitSupported)
             putBoolean(KEY_LIMIT_ENABLED, s.limitEnabled)
@@ -109,6 +118,7 @@ class ControlProvider : ContentProvider() {
         const val METHOD_SET_MODE = "set_mode"
         const val METHOD_SET_COOL = "set_cool"
         const val METHOD_SET_LIMIT = "set_limit"
+        const val METHOD_SET_GAME_HOLD = "set_game_hold"
         const val KEY_OK = "ok"
         const val KEY_ERROR = "error"
         const val KEY_ENABLED = "enabled"
@@ -117,6 +127,8 @@ class ControlProvider : ContentProvider() {
         const val KEY_MODE = "mode"
         const val KEY_ACTIVE_LIMIT = "active_limit"
         const val KEY_SMART_LIMIT = "smart_limit"
+        const val KEY_GAME_HOLD = "game_hold"
+        const val KEY_GAME_LIMIT = "game_limit"
         const val KEY_COOL_ENABLED = "cool_enabled"
         const val KEY_LIMIT_SUPPORTED = "limit_supported"
         const val KEY_LIMIT_ENABLED = "limit_enabled"
