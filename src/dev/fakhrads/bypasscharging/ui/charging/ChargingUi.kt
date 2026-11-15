@@ -60,6 +60,12 @@ import java.util.Locale
 
 private const val READING_INTERVAL_MS = 2000L
 
+// current_now's sign differs between drivers; the one that means charging is learnt and kept here
+private const val PREFS = "bypass_charging"
+private const val KEY_CHARGE_SIGN = "current_charge_sign"
+// Below this a reading is too close to zero to tell the sign from
+private const val SIGN_MIN_MICROAMPS = 50_000
+
 // The USB node is in tenths of a degree, the board node in thousandths
 private const val USB_TEMP = "/sys/class/power_supply/usb/temp"
 private const val BOARD_TEMP = "/sys/devices/virtual/thermal/thermal_message/board_sensor_temp"
@@ -68,6 +74,7 @@ private const val BOARD_TEMP = "/sys/devices/virtual/thermal/thermal_message/boa
 data class ChargingReading(
     val charging: Boolean = false,
     val volts: Double = 0.0,
+    /** Into the battery; negative while the battery gives power. */
     val amps: Double = 0.0,
     val batteryTemp: Double = Double.NaN,
     val usbTemp: Double = Double.NaN,
@@ -82,15 +89,34 @@ private fun read(context: Context): ChargingReading {
     val tempTenths = battery?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0
     val microAmps = context.getSystemService(BatteryManager::class.java)
         ?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) ?: 0
+    val plugged = (battery?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0) != 0
     return ChargingReading(
         charging = status == BatteryManager.BATTERY_STATUS_CHARGING,
         volts = (battery?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0) ?: 0) / 1e3,
-        // The sign of current_now differs between drivers
-        amps = if (microAmps == Int.MIN_VALUE) 0.0 else Math.abs(microAmps) / 1e6,
+        // Signed: a small charge current must not read as a drain, nor the other way round
+        amps = if (microAmps == Int.MIN_VALUE) 0.0
+        else microAmps * chargeSign(context, microAmps, plugged) / 1e6,
         batteryTemp = if (tempTenths > 0) tempTenths / 10.0 else Double.NaN,
         usbTemp = readTemp(USB_TEMP, 10.0),
         boardTemp = readTemp(BOARD_TEMP, 1000.0)
     )
+}
+
+/**
+ * The sign current_now has while the battery charges: 1 as BatteryManager documents it, -1 on a
+ * driver that reports it the other way round. Unplugged the battery can only give power, so a
+ * reading then tells which it is; it is saved for the readings on the charger, where the status
+ * does not say (under load the battery can give power while "charging").
+ */
+private fun chargeSign(context: Context, microAmps: Int, plugged: Boolean): Int {
+    val prefs = context.createDeviceProtectedStorageContext()
+        .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    if (!plugged && Math.abs(microAmps) >= SIGN_MIN_MICROAMPS) {
+        val sign = if (microAmps > 0) -1 else 1
+        if (prefs.getInt(KEY_CHARGE_SIGN, 0) != sign) prefs.edit().putInt(KEY_CHARGE_SIGN, sign).apply()
+        return sign
+    }
+    return prefs.getInt(KEY_CHARGE_SIGN, 1)
 }
 
 /** A temperature from a sysfs node, in degrees; NaN if the node cannot be read. */
@@ -274,12 +300,13 @@ private fun ChargingHero(ui: ChargingUi) {
         }
         held -> {
             title = stringResource(R.string.tile_label)
-            // Held at the limit the charger runs the phone; what the battery still gives shows
-            // when the charger is not enough
+            // Held at the limit the charger runs the phone; what the battery still gives (minus)
+            // shows when the charger is not enough, and what it takes (plus) when it tops up
             subtitle = stringResource(
                 R.string.hero_battery_power,
                 holdText,
-                String.format(Locale.getDefault(), "%.1f", if (reading.watts > 0.05) -reading.watts else 0.0)
+                if (Math.abs(reading.watts) > 0.05) String.format(Locale.getDefault(), "%+.1f", reading.watts)
+                else String.format(Locale.getDefault(), "%.1f", 0.0)
             )
         }
         charging -> {
