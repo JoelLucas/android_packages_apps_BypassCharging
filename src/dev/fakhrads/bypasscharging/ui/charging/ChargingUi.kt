@@ -296,7 +296,7 @@ private fun ChargingHero(ui: ChargingUi) {
     }
     val modeLabel = when {
         state == null || !state.installed -> null
-        active -> stringResource(R.string.mode_bypass)
+        active -> stringResource(if (bypass) R.string.mode_bypass else R.string.mode_smart)
         state.coolEnabled -> stringResource(R.string.cool_title)
         state.limitEnabled -> "${state.watts} W"
         else -> stringResource(R.string.limit_off_title)
