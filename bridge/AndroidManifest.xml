@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="dev.fakhrads.bypasschargebridge"
+    android:sharedUserId="android.uid.system">
+    <permission android:name="dev.fakhrads.bypasschargebridge.permission.CONTROL"
+        android:protectionLevel="signature" />
+    <application android:label="Bypass Charge Bridge"
+        android:hasCode="true" android:directBootAware="true"
+        android:allowBackup="false">
+        <provider
+            android:name=".ChargeProvider"
+            android:authorities="dev.fakhrads.bypasschargebridge"
+            android:permission="dev.fakhrads.bypasschargebridge.permission.CONTROL"
+            android:exported="true"
+            android:directBootAware="true" />
+    </application>
+</manifest>

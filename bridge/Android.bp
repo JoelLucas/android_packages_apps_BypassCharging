@@ -1,0 +1,8 @@
+// Minimal, platform-signed MCA charging bridge for onyx.
+android_app {
+    name: "BypassChargeBridge",
+    srcs: ["src/**/*.java"],
+    certificate: "platform",
+    platform_apis: true,
+    system_ext_specific: true,
+}
