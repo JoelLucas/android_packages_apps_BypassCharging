@@ -12,6 +12,7 @@ public class BypassChargingApp extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        McaBridge.init(this);
         CoolCharging.get(this).start();
         BypassHold.get(this).start();
     }

@@ -16,7 +16,6 @@ import android.os.HandlerThread;
 import android.os.SystemClock;
 import android.util.Log;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
@@ -179,13 +178,7 @@ final class BypassHold {
     /** Votes for charging the battery or not; the charger keeps running the phone either way. */
     private static boolean setCharging(boolean charging) {
         // One vote per write: the driver parses a single "user type value" per store
-        try (FileOutputStream out = new FileOutputStream(NODE)) {
-            out.write((VOTE_PREFIX + (charging ? 1 : 0)).getBytes(StandardCharsets.US_ASCII));
-            return true;
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to write charging " + charging + " to " + NODE, e);
-            return false;
-        }
+        return McaBridge.writeCharge(VOTE_PREFIX + (charging ? 1 : 0));
     }
 
     private static int levelOf(Intent battery) {

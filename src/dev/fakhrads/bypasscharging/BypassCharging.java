@@ -96,7 +96,7 @@ final class BypassCharging {
     }
 
     boolean isSupported() {
-        return new File(NODE).canWrite();
+        return McaBridge.canCharge();
     }
 
     int getMode() {

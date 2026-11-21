@@ -98,20 +98,18 @@ class LocalChargingControl(context: Context) : ChargingControl {
      * last one to vote, not the one that decided, so only the values are used. Null if the node
      * cannot be read.
      */
-    private fun readChargeEnable(): Map<String, Int>? =
-        try {
-            File(BypassHold.NODE).readLines().mapNotNull { line ->
-                val fields = line.trim().split(' ')
-                val value = fields.lastOrNull()?.toIntOrNull()
-                if (fields.size >= 3 && fields[1].startsWith("eff_client:") && value != null) {
-                    fields[0] to value
-                } else {
-                    null
-                }
-            }.toMap()
-        } catch (e: IOException) {
-            null
-        }
+    private fun readChargeEnable(): Map<String, Int>? {
+        val raw = McaBridge.readCharge() ?: return null
+        return raw.lineSequence().mapNotNull { line ->
+            val fields = line.trim().split(' ').filter { it.isNotEmpty() }
+            val value = fields.lastOrNull()?.toIntOrNull()
+            if (fields.size >= 3 && fields[1].startsWith("eff_client:") && value != null) {
+                fields[0] to value
+            } else {
+                null
+            }
+        }.toMap()
+    }
 
     /** The reason and the grant state of each requested permission, to copy into a report. */
     private fun details(error: String?): String {

@@ -6,6 +6,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="dev.fakhrads.bypasscharging">
 
+    <uses-permission android:name="dev.fakhrads.bypasschargebridge.permission.CONTROL" />
+
     <!-- Charging control state lives in LineageSettings.System -->
     <uses-permission android:name="lineageos.permission.WRITE_SETTINGS" />
     <!-- LineageSettingsProvider checks it (or the WRITE_SETTINGS appop) on every insert -->

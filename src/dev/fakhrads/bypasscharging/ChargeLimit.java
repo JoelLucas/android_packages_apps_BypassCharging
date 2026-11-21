@@ -10,7 +10,6 @@ import android.content.SharedPreferences;
 import android.util.Log;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
@@ -65,7 +64,7 @@ final class ChargeLimit {
     }
 
     boolean isSupported() {
-        return new File(NODE).canWrite();
+        return McaBridge.canCurrent();
     }
 
     boolean isEnabled() {
@@ -96,12 +95,6 @@ final class ChargeLimit {
 
     private static boolean write(String user, String command) {
         // One vote per write: the driver parses a single "user type value" per store
-        try (FileOutputStream out = new FileOutputStream(NODE)) {
-            out.write((user + " " + command).getBytes(StandardCharsets.US_ASCII));
-            return true;
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to write '" + command + "' to " + NODE, e);
-            return false;
-        }
+        return McaBridge.writeCurrent(user + " " + command);
     }
 }

@@ -68,7 +68,6 @@ private const val KEY_CHARGE_SIGN = "current_charge_sign"
 private const val SIGN_MIN_MICROAMPS = 50_000
 
 // The USB node is in tenths of a degree, the board node in thousandths
-private const val USB_TEMP = "/sys/class/power_supply/usb/temp"
 private const val BOARD_TEMP = "/sys/devices/virtual/thermal/thermal_message/board_sensor_temp"
 
 /** A live reading of the battery and the charger. */
@@ -98,7 +97,7 @@ private fun read(context: Context): ChargingReading {
         amps = if (microAmps == Int.MIN_VALUE) 0.0
         else microAmps * chargeSign(context, microAmps, plugged) / 1e6,
         batteryTemp = if (tempTenths > 0) tempTenths / 10.0 else Double.NaN,
-        usbTemp = readTemp(USB_TEMP, 10.0),
+        usbTemp = Double.NaN,
         boardTemp = readTemp(BOARD_TEMP, 1000.0)
     )
 }
